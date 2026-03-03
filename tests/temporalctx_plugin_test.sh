@@ -197,4 +197,13 @@ assert_contains "$out" "wrapped=ARGS: --address us-west-2.aws.api.temporal.io:72
 assert_contains "$out" "raw=ARGS: workflow list --limit 5" "opt-out env var should bypass wrapping"
 log "case passed: temporal wrapper"
 
+# Test: env placeholders do not loop on self-referential exports.
+log "case: self-referential env values do not hang"
+out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" TEMPORAL_CLOUD_PROD_API_KEY='${TEMPORAL_CLOUD_PROD_API_KEY}' zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  echo "flags=$(_temporal_flags)"
+')"
+assert_contains "$out" "flags=--address us-west-2.aws.api.temporal.io:7233 --namespace example-prod.a1b2c --tls --api-key" "resolver should return without looping on self-referential env values"
+log "case passed: self-referential env values"
+
 echo "PASS: temporalctx.plugin.zsh"

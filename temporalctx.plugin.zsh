@@ -136,12 +136,16 @@ _temporalctx_resolve_value() {
   printf '%s\n' "$value" | awk '
     {
       s = $0
-      while (match(s, /\$\{[A-Za-z_][A-Za-z0-9_]*\}/)) {
-        var = substr(s, RSTART + 2, RLENGTH - 3)
-        val = ENVIRON[var]
-        s = substr(s, 1, RSTART - 1) val substr(s, RSTART + RLENGTH)
+      out = ""
+      pos = 1
+      while (match(substr(s, pos), /\$\{[A-Za-z_][A-Za-z0-9_]*\}/)) {
+        mstart = pos + RSTART - 1
+        out = out substr(s, pos, mstart - pos)
+        var = substr(s, mstart + 2, RLENGTH - 3)
+        out = out ENVIRON[var]
+        pos = mstart + RLENGTH
       }
-      print s
+      print out substr(s, pos)
     }
   '
 }

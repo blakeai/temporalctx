@@ -65,7 +65,7 @@ else
   echo "Plugin path not found: $target_dir"
 fi
 
-zshc_dir="${ZSHC:-$HOME/.config/zsh}"
+zshc_dir="${ZSH_CONFIG:-${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}}"
 helper_target="$zshc_dir/temporal.zsh"
 if [[ -L "$helper_target" ]]; then
   link_target="$(readlink "$helper_target" || true)"

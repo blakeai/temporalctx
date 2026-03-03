@@ -38,7 +38,7 @@ source ~/.zshrc
 
 | Flag | What it does |
 |---|---|
-| `--full` | Also installs helper functions (`tq`, `td`, `tl`) by symlinking `temporal.zsh` into `~/.config/zsh/` |
+| `--full` | Also installs helper functions (`tq`, `td`, `tl`) by symlinking `temporal.zsh` into `$ZSH_CONFIG` (or `${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}` when unset) |
 | `[path]` | Install to a custom plugins directory instead of `$ZSH_CUSTOM/plugins` |
 
 ```bash
