@@ -76,6 +76,30 @@ assert_contains "$out" "pick=cloud-prod" "interactive picker should switch to fz
 assert_contains "$out" "curr=cloud-prod" "current context should match picker result"
 log "case passed: interactive picker"
 
+# Test: edit subcommand opens config in VISUAL/EDITOR.
+log "case: edit subcommand opens config with VISUAL/EDITOR"
+cat > "$tmp_root/bin/editor-visual" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${TMP_EDITOR_VISUAL_LOG:?}"
+SH
+cat > "$tmp_root/bin/editor-fallback" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${TMP_EDITOR_FALLBACK_LOG:?}"
+SH
+chmod +x "$tmp_root/bin/editor-visual" "$tmp_root/bin/editor-fallback"
+
+visual_log="$tmp_root/visual.log"
+fallback_log="$tmp_root/fallback.log"
+PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" VISUAL="$tmp_root/bin/editor-visual" EDITOR="$tmp_root/bin/editor-fallback" TMP_EDITOR_VISUAL_LOG="$visual_log" TMP_EDITOR_FALLBACK_LOG="$fallback_log" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  temporalctx edit
+'
+[[ -f "$visual_log" ]] || fail "VISUAL editor should be invoked by edit subcommand"
+visual_args="$(cat "$visual_log")"
+assert_contains "$visual_args" "$cfg" "editor should receive config file path"
+[[ ! -f "$fallback_log" ]] || fail "EDITOR fallback should not run when VISUAL is set"
+log "case passed: edit subcommand"
+
 # Test: temporal command wrapping + opt-out.
 log "case: temporal wrapper injects flags and supports opt-out"
 out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" TEMPORAL_CLOUD_PROD_API_KEY=sekret zsh -c '

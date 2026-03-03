@@ -206,6 +206,13 @@ _temporalctx_pick_context() {
   _temporalctx_switch "$selected"
 }
 
+_temporalctx_edit_config() {
+  local config_file editor_cmd
+  config_file="$(_temporalctx_config_file)"
+  editor_cmd="${VISUAL:-${EDITOR:-vi}}"
+  ${=editor_cmd} "$config_file"
+}
+
 typeset -ga _temporalctx_flags
 
 _temporalctx_build_flags() {
@@ -269,6 +276,9 @@ temporalctx() {
   case "$1" in
     "")
       _temporalctx_pick_context
+      ;;
+    edit|-e|--edit)
+      _temporalctx_edit_config
       ;;
     -c)
       _temporalctx_current_context
