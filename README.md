@@ -43,3 +43,11 @@ contexts:
     namespace: default
     tls: false
 ```
+
+## Testing
+
+Run the test suite:
+
+```bash
+./tests/run.sh
+```
