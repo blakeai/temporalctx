@@ -46,9 +46,14 @@ To bypass wrapping for a command/session, set `TEMPORALCTX_DISABLE_WRAP=1`.
 ./install.sh
 # or
 ./install.sh ~/my-custom-zsh/plugins
+# or include opinionated tq/td/tl helpers in $ZSHC/temporal.zsh
+./install.sh --full
 ```
 
 Then add `temporalctx` to your `plugins=(...)` in `.zshrc`.
+
+`--full` is optional and installs plugin-owned helper functions (`tq`, `td`, `tl`) by symlinking:
+- `${ZSHC:-~/.config/zsh}/temporal.zsh` -> `<plugin-dir>/temporalctx.full.zsh`
 
 ## Config format
 

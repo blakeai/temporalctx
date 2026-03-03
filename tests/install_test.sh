@@ -44,4 +44,16 @@ PATH="$tmp_root/bin:$PATH" HOME="$home2" "$REPO_ROOT/install.sh" "$custom_target
 [[ -L "$custom_target/temporalctx" || -d "$custom_target/temporalctx/.git" ]] || fail "custom target should install to <dir>/temporalctx"
 log "case passed: custom target"
 
+# Test: --full installs opinionated helpers into ZSHC/temporal.zsh.
+log "case: --full installs opinionated helpers in ZSHC"
+home3="$tmp_root/home3"
+zshc3="$tmp_root/zshc3"
+plugins3="$tmp_root/plugins3"
+mkdir -p "$home3" "$zshc3" "$plugins3"
+PATH="$tmp_root/bin:$PATH" HOME="$home3" ZSHC="$zshc3" "$REPO_ROOT/install.sh" --full "$plugins3" >"$tmp_root/install3.out" 2>"$tmp_root/install3.err"
+[[ -L "$zshc3/temporal.zsh" ]] || fail "--full should install temporal.zsh as a symlink in ZSHC"
+link_target="$(readlink "$zshc3/temporal.zsh")"
+assert_contains "$link_target" "temporalctx.full.zsh" "--full helper symlink should point to plugin helper file"
+log "case passed: --full helpers"
+
 echo "PASS: install.sh"
