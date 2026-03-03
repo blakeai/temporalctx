@@ -157,6 +157,13 @@ case "$cmd" in
   status)
     : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
     [[ -e "$OVERMIND_SOCKET" ]] || exit 1
+    printf 'temporal\trunning\n'
+    exit 0
+    ;;
+  echo)
+    : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
+    [[ -e "$OVERMIND_SOCKET" ]] || exit 1
+    printf 'temporal | fake log line\n'
     exit 0
     ;;
   quit)
@@ -190,6 +197,23 @@ assert_contains "$out" "sock_exists=no" "overmind stop should clear socket"
 assert_contains "$out" "start_no_om=started local dev server (pid " "--no-overmind should force pid mode start"
 assert_contains "$out" "stop_no_om=stopped local dev server (pid " "--no-overmind should force pid mode stop"
 log "case passed: overmind and --no-overmind"
+
+# Test: status and logs subcommands.
+log "case: status and logs subcommands"
+out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  echo "status_down=$(temporalctx status 2>&1)"
+  echo "logs_down=$(temporalctx logs 2>&1)"
+  temporalctx start >/dev/null
+  echo "status_up=$(temporalctx status 2>&1)"
+  echo "logs_up=$(temporalctx logs 2>&1)"
+  temporalctx stop >/dev/null
+')"
+assert_contains "$out" "status_down=temporalctx: local dev server not running" "status should report not running when stopped"
+assert_contains "$out" "logs_down=temporalctx: local dev server not running" "logs should report not running when stopped"
+assert_contains "$out" "status_up=temporal" "status should show process info when running"
+assert_contains "$out" "logs_up=temporal | fake log line" "logs should show output when running"
+log "case passed: status and logs subcommands"
 
 # Test: temporal command wrapping + opt-out.
 log "case: temporal wrapper injects flags and supports opt-out"

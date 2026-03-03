@@ -245,6 +245,8 @@ Usage:
   temporalctx edit         open config in $VISUAL/$EDITOR
   temporalctx start        start local dev server
   temporalctx stop         stop local dev server
+  temporalctx status       show local dev server status
+  temporalctx logs         tail local dev server logs
   temporalctx help         show this help
 EOF
 }
@@ -349,6 +351,48 @@ _temporalctx_stop_local_server() {
   print -r -- "stopped local dev server (pid $pid)"
 }
 
+_temporalctx_server_status() {
+  local socket pid_file pid
+  socket="$(_temporalctx_overmind_socket)"
+
+  if [[ -e "$socket" ]] && command -v overmind >/dev/null 2>&1; then
+    if OVERMIND_SOCKET="$socket" overmind status >/dev/null 2>&1; then
+      OVERMIND_SOCKET="$socket" overmind status
+      return 0
+    fi
+    rm -f -- "$socket"
+  fi
+
+  pid_file="$(_temporalctx_pid_file)"
+  if [[ -f "$pid_file" ]]; then
+    pid="$(<"$pid_file")"
+    if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+      print -r -- "temporal: running (pid $pid)"
+      return 0
+    fi
+    rm -f -- "$pid_file"
+  fi
+
+  print -u2 -- "temporalctx: local dev server not running"
+  return 1
+}
+
+_temporalctx_server_logs() {
+  local socket
+  socket="$(_temporalctx_overmind_socket)"
+
+  if [[ -e "$socket" ]] && command -v overmind >/dev/null 2>&1; then
+    if OVERMIND_SOCKET="$socket" overmind status >/dev/null 2>&1; then
+      OVERMIND_SOCKET="$socket" overmind echo
+      return $?
+    fi
+    rm -f -- "$socket"
+  fi
+
+  print -u2 -- "temporalctx: local dev server not running (logs require overmind)"
+  return 1
+}
+
 typeset -ga _temporalctx_flags
 
 _temporalctx_build_flags() {
@@ -445,6 +489,12 @@ temporalctx() {
         return 1
       fi
       _temporalctx_stop_local_server "$no_overmind"
+      ;;
+    status)
+      _temporalctx_server_status
+      ;;
+    logs)
+      _temporalctx_server_logs
       ;;
     edit|-e|--edit)
       _temporalctx_edit_config
