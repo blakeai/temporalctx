@@ -206,11 +206,13 @@ _temporalctx_pick_context() {
   _temporalctx_switch "$selected"
 }
 
-_temporal_flags() {
+typeset -ga _temporalctx_flags
+
+_temporalctx_build_flags() {
   _temporalctx_ensure_config
 
-  local current address namespace tls api_key token
-  local -a flags rendered
+  local current address namespace tls api_key
+  _temporalctx_flags=()
   current="$(_temporalctx_current_context)"
   if [[ -z "$current" ]]; then
     return 0
@@ -226,19 +228,39 @@ _temporal_flags() {
   tls="$(_temporalctx_resolve_value "$tls")"
   api_key="$(_temporalctx_resolve_value "$api_key")"
 
-  flags=()
-  [[ -n "$address" ]] && flags+=("--address" "$address")
-  [[ -n "$namespace" ]] && flags+=("--namespace" "$namespace")
+  [[ -n "$address" ]] && _temporalctx_flags+=("--address" "$address")
+  [[ -n "$namespace" ]] && _temporalctx_flags+=("--namespace" "$namespace")
   if [[ "${tls:l}" == "true" ]]; then
-    flags+=("--tls")
+    _temporalctx_flags+=("--tls")
   fi
-  [[ -n "$api_key" ]] && flags+=("--api-key" "$api_key")
+  [[ -n "$api_key" ]] && _temporalctx_flags+=("--api-key" "$api_key")
+}
+
+_temporal_flags() {
+  local token
+  local -a rendered
+  _temporalctx_build_flags || return 1
 
   rendered=()
-  for token in "${flags[@]}"; do
+  for token in "${_temporalctx_flags[@]}"; do
     rendered+=("$(printf '%q' "$token")")
   done
   print -r -- "${(j: :)rendered}"
+}
+
+temporal() {
+  if [[ "${TEMPORALCTX_DISABLE_WRAP:-}" == "1" ]]; then
+    command temporal "$@"
+    return $?
+  fi
+
+  if [[ -z "$(whence -p temporal)" ]]; then
+    print -u2 -- "temporalctx: temporal CLI not found in PATH"
+    return 127
+  fi
+
+  _temporalctx_build_flags || return 1
+  command temporal "${_temporalctx_flags[@]}" "$@"
 }
 
 temporalctx() {
