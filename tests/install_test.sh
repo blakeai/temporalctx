@@ -32,7 +32,7 @@ custom1="$tmp_root/custom1"
 mkdir -p "$home1" "$custom1"
 PATH="$tmp_root/bin:$PATH" HOME="$home1" ZSH_CUSTOM="$custom1" "$REPO_ROOT/install.sh" >"$tmp_root/install1.out" 2>"$tmp_root/install1.err"
 [[ -L "$custom1/plugins/temporalctx" || -d "$custom1/plugins/temporalctx/.git" ]] || fail "default install should target ZSH_CUSTOM/plugins/temporalctx"
-[[ -f "$home1/.temporal/config" ]] || fail "installer should create default config"
+[[ -f "$home1/.temporal/config.yml" ]] || fail "installer should create default config"
 log "case passed: default target"
 
 # Test: custom target dir appends /temporalctx when needed.

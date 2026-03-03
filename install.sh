@@ -56,7 +56,7 @@ else
   fi
 fi
 
-config_file="${TEMPORAL_CONFIG:-$HOME/.temporal/config}"
+config_file="${TEMPORAL_CONFIG:-$HOME/.temporal/config.yml}"
 mkdir -p "$(dirname "$config_file")"
 if [[ ! -f "$config_file" ]]; then
   cat > "$config_file" <<'YAML'

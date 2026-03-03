@@ -1,6 +1,6 @@
 # temporalctx
 
-An oh-my-zsh plugin for switching Temporal contexts (`~/.temporal/config`) similar to `kubectx`.
+An oh-my-zsh plugin for switching Temporal contexts (`~/.temporal/config.yml`) similar to `kubectx`.
 
 ## Commands
 
