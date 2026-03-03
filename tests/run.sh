@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-"$ROOT/tests/temporalctx.plugin.zsh.test"
-"$ROOT/tests/install.sh.test"
+"$ROOT/tests/temporalctx_plugin_test.sh"
+"$ROOT/tests/install_test.sh"
 
 echo "PASS: all tests"
