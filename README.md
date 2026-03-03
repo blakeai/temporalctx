@@ -1,0 +1,42 @@
+# temporalctx
+
+An oh-my-zsh plugin for switching Temporal contexts (`~/.temporal/config`) similar to `kubectx`.
+
+## Commands
+
+- `temporalctx`: open interactive context picker via `fzf`
+- `temporalctx <name>`: switch to named context
+- `temporalctx -`: switch to previous context
+- `temporalctx -c`: print current context
+
+## Helper function
+
+`_temporal_flags` reads the active context and prints CLI flags:
+
+```bash
+--address localhost:7233 --namespace default
+```
+
+It resolves `${ENV_VAR}` placeholders in config values.
+
+## Install
+
+```bash
+./install.sh
+# or
+./install.sh ~/my-custom-zsh/plugins
+```
+
+Then add `temporalctx` to your `plugins=(...)` in `.zshrc`.
+
+## Config format
+
+```yaml
+current-context: local
+
+contexts:
+  local:
+    address: localhost:7233
+    namespace: default
+    tls: false
+```
