@@ -260,9 +260,24 @@ _temporalctx_start_local_server() {
       print -u2 -- "temporalctx: Procfile not found at $procfile"
       return 1
     fi
+    if [[ -e "$socket" ]]; then
+      if OVERMIND_SOCKET="$socket" overmind status >/dev/null 2>&1; then
+        print -u2 -- "temporalctx: local dev server already running"
+        return 1
+      fi
+      rm -f -- "$socket"
+    fi
     OVERMIND_SOCKET="$socket" overmind start -f "$procfile" -D >/dev/null 2>&1 || return 1
-    print -r -- "started local dev server via overmind"
-    return 0
+    local i
+    for i in {1..20}; do
+      if [[ -e "$socket" ]]; then
+        print -r -- "started local dev server via overmind"
+        return 0
+      fi
+      sleep 0.1
+    done
+    print -u2 -- "temporalctx: overmind exited immediately (check that port 7233 is free)"
+    return 1
   fi
 
   pid_file="$(_temporalctx_pid_file)"
@@ -293,11 +308,17 @@ _temporalctx_stop_local_server() {
 
   if [[ "$no_overmind" != "1" ]] && command -v overmind >/dev/null 2>&1; then
     socket="$(_temporalctx_overmind_socket)"
-    if [[ ! -S "$socket" && ! -e "$socket" ]]; then
+    if [[ ! -e "$socket" ]]; then
+      print -u2 -- "temporalctx: local dev server not running"
+      return 1
+    fi
+    if ! OVERMIND_SOCKET="$socket" overmind status >/dev/null 2>&1; then
+      rm -f -- "$socket"
       print -u2 -- "temporalctx: local dev server not running"
       return 1
     fi
     OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1 || return 1
+    rm -f -- "$socket"
     print -r -- "stopped local dev server via overmind"
     return 0
   fi

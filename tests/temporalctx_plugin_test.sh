@@ -154,6 +154,11 @@ case "$cmd" in
     : > "$OVERMIND_SOCKET"
     exit 0
     ;;
+  status)
+    : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
+    [[ -e "$OVERMIND_SOCKET" ]] || exit 1
+    exit 0
+    ;;
   quit)
     : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
     rm -f -- "$OVERMIND_SOCKET"
