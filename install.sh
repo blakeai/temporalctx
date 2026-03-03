@@ -100,7 +100,7 @@ else
 fi
 
 if [[ "$full_mode" == "1" ]]; then
-  zshc_dir="${ZSHC:-$HOME/.config/zsh}"
+  zshc_dir="${ZSH_CONFIG:-${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}}"
   helper_source="$target_dir/temporalctx.full.zsh"
   helper_target="$zshc_dir/temporal.zsh"
   mkdir -p "$zshc_dir"
