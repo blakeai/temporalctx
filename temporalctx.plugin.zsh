@@ -356,6 +356,7 @@ _temporalctx_build_flags() {
     _temporalctx_flags+=("--tls")
   fi
   [[ -n "$api_key" ]] && _temporalctx_flags+=("--api-key" "$api_key")
+  return 0
 }
 
 _temporal_flags() {
@@ -371,6 +372,8 @@ _temporal_flags() {
 }
 
 temporal() {
+  local subcommand
+
   if [[ "${TEMPORALCTX_DISABLE_WRAP:-}" == "1" ]]; then
     command temporal "$@"
     return $?
@@ -382,7 +385,15 @@ temporal() {
   fi
 
   _temporalctx_build_flags || return 1
-  command temporal "${_temporalctx_flags[@]}" "$@"
+
+  if [[ "$#" -eq 0 || "$1" == -* ]]; then
+    command temporal "$@"
+    return $?
+  fi
+
+  subcommand="$1"
+  shift
+  command temporal "$subcommand" "${_temporalctx_flags[@]}" "$@"
 }
 
 temporalctx() {
