@@ -193,9 +193,28 @@ out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" TEMPORAL_CLOUD_PROD_API
   echo "wrapped=$(temporal workflow list --limit 5)"
   echo "raw=$(TEMPORALCTX_DISABLE_WRAP=1 temporal workflow list --limit 5)"
 ')"
-assert_contains "$out" "wrapped=ARGS: --address us-west-2.aws.api.temporal.io:7233 --namespace example-prod.a1b2c --tls --api-key sekret workflow list --limit 5" "temporal wrapper should prepend context flags"
+assert_contains "$out" "wrapped=ARGS: workflow --address us-west-2.aws.api.temporal.io:7233 --namespace example-prod.a1b2c --tls --api-key sekret list --limit 5" "temporal wrapper should inject context flags after top-level command"
 assert_contains "$out" "raw=ARGS: workflow list --limit 5" "opt-out env var should bypass wrapping"
 log "case passed: temporal wrapper"
+
+# Test: missing context fields do not emit empty-value flags.
+log "case: missing context fields do not emit empty flags"
+cfg_missing="$tmp_root/config-missing.yml"
+cat > "$cfg_missing" <<'YAML'
+current-context: bare
+
+contexts:
+  bare:
+    namespace: only-namespace
+YAML
+out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg_missing" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  echo "wrapped=$(temporal workflow list --limit 1)"
+')"
+assert_contains "$out" "wrapped=ARGS: workflow --namespace only-namespace list --limit 1" "wrapper should include only populated flags"
+[[ "$out" != *"--address  "* ]] || fail "wrapper should not pass empty address"
+[[ "$out" != *"--api-key  "* ]] || fail "wrapper should not pass empty api key"
+log "case passed: missing context fields"
 
 # Test: env placeholders do not loop on self-referential exports.
 log "case: self-referential env values do not hang"
