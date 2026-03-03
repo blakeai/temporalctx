@@ -8,6 +8,7 @@ An oh-my-zsh plugin for switching Temporal contexts (`~/.temporal/config`) simil
 - `temporalctx <name>`: switch to named context
 - `temporalctx -`: switch to previous context
 - `temporalctx -c`: print current context
+- `temporalctx edit` (`-e`/`--edit`): open config in `$VISUAL`, then `$EDITOR`, else `vi`
 - `temporal ...`: wrapped by plugin to automatically include current context flags
 
 ## Helper function
