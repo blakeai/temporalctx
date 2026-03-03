@@ -4,10 +4,37 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$SCRIPT_DIR"
 
-if [[ $# -gt 1 ]]; then
-  echo "Usage: ./install.sh [target-directory]" >&2
-  exit 1
-fi
+usage() {
+  echo "Usage: ./install.sh [--full] [target-directory]" >&2
+}
+
+full_mode=0
+user_target=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --full)
+      full_mode=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+    *)
+      if [[ -n "$user_target" ]]; then
+        usage
+        exit 1
+      fi
+      user_target="$1"
+      shift
+      ;;
+  esac
+done
 
 if ! command -v temporal >/dev/null 2>&1; then
   echo "temporal CLI is required but was not found in PATH." >&2
@@ -16,8 +43,7 @@ if ! command -v temporal >/dev/null 2>&1; then
 fi
 
 default_target_base="${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins"
-if [[ $# -eq 1 ]]; then
-  user_target="$1"
+if [[ -n "$user_target" ]]; then
   if [[ "$(basename "$user_target")" == "temporalctx" ]]; then
     target_dir="$user_target"
   else
@@ -71,6 +97,19 @@ YAML
   echo "Created default config at $config_file"
 else
   echo "Config already exists at $config_file"
+fi
+
+if [[ "$full_mode" == "1" ]]; then
+  zshc_dir="${ZSHC:-$HOME/.config/zsh}"
+  helper_source="$target_dir/temporalctx.full.zsh"
+  helper_target="$zshc_dir/temporal.zsh"
+  mkdir -p "$zshc_dir"
+  if [[ ! -f "$helper_source" ]]; then
+    echo "Could not find opinionated helpers at $helper_source" >&2
+    exit 1
+  fi
+  ln -sfn "$helper_source" "$helper_target"
+  echo "Installed opinionated helpers at $helper_target"
 fi
 
 echo

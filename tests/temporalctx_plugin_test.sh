@@ -60,6 +60,12 @@ printf 'cloud-prod\n'
 SH
 cat > "$tmp_root/bin/temporal" <<'SH'
 #!/usr/bin/env bash
+if [[ "${1:-}" == "server" && "${2:-}" == "start-dev" ]]; then
+  trap 'exit 0' TERM INT
+  while true; do
+    sleep 1
+  done
+fi
 printf 'ARGS:'
 printf ' %s' "$@"
 printf '\n'
@@ -99,6 +105,72 @@ visual_args="$(cat "$visual_log")"
 assert_contains "$visual_args" "$cfg" "editor should receive config file path"
 [[ ! -f "$fallback_log" ]] || fail "EDITOR fallback should not run when VISUAL is set"
 log "case passed: edit subcommand"
+
+# Test: alias + local dev server start/stop via PID file.
+log "case: tctx alias and local dev server lifecycle"
+out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  echo "alias_current=$(tctx -c)"
+  start_out="$(temporalctx start --no-overmind)"
+  pid_file="${TEMPORAL_CONFIG:h}/temporal-dev-server.pid"
+  [[ -f "$pid_file" ]] || exit 22
+  pid="$(<"$pid_file")"
+  kill -0 "$pid"
+  stop_out="$(temporalctx stop --no-overmind)"
+  echo "start=${start_out}"
+  echo "stop=${stop_out}"
+  echo "pid_file_exists=$([[ -f "$pid_file" ]] && echo yes || echo no)"
+')"
+assert_contains "$out" "alias_current=cloud-prod" "tctx alias should call temporalctx"
+assert_contains "$out" "start=started local dev server (pid " "start should report pid"
+assert_contains "$out" "stop=stopped local dev server (pid " "stop should report pid"
+assert_contains "$out" "pid_file_exists=no" "stop should remove pid file"
+log "case passed: alias and local dev server lifecycle"
+
+# Test: overmind path when available, and --no-overmind fallback.
+log "case: overmind start/stop and --no-overmind fallback"
+cat > "$tmp_root/bin/overmind" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+cmd="${1:-}"
+shift || true
+case "$cmd" in
+  start)
+    : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
+    : > "$OVERMIND_SOCKET"
+    exit 0
+    ;;
+  quit)
+    : "${OVERMIND_SOCKET:?OVERMIND_SOCKET required}"
+    rm -f -- "$OVERMIND_SOCKET"
+    exit 0
+    ;;
+  *)
+    echo "unexpected overmind command: $cmd" >&2
+    exit 1
+    ;;
+esac
+SH
+chmod +x "$tmp_root/bin/overmind"
+
+out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  sock="${TEMPORAL_CONFIG:h}/overmind.sock"
+  echo "start_om=$(temporalctx start)"
+  [[ -e "$sock" ]] || exit 31
+  echo "stop_om=$(temporalctx stop)"
+  echo "sock_exists=$([[ -e "$sock" ]] && echo yes || echo no)"
+  echo "start_no_om=$(temporalctx start --no-overmind)"
+  pid_file="${TEMPORAL_CONFIG:h}/temporal-dev-server.pid"
+  [[ -f "$pid_file" ]] || exit 32
+  echo "stop_no_om=$(temporalctx stop --no-overmind)"
+')"
+assert_contains "$out" "start_om=started local dev server via overmind" "start should use overmind when available"
+assert_contains "$out" "stop_om=stopped local dev server via overmind" "stop should use overmind when available"
+assert_contains "$out" "sock_exists=no" "overmind stop should clear socket"
+assert_contains "$out" "start_no_om=started local dev server (pid " "--no-overmind should force pid mode start"
+assert_contains "$out" "stop_no_om=stopped local dev server (pid " "--no-overmind should force pid mode stop"
+log "case passed: overmind and --no-overmind"
 
 # Test: temporal command wrapping + opt-out.
 log "case: temporal wrapper injects flags and supports opt-out"

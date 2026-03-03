@@ -1,6 +1,8 @@
 # temporalctx oh-my-zsh plugin
 # Switch between Temporal contexts defined in ~/.temporal/config.yml.
 
+typeset -g _TEMPORALCTX_PLUGIN_DIR="${${(%):-%x}:A:h}"
+
 _temporalctx_config_file() {
   if [[ -n "$TEMPORAL_CONFIG" ]]; then
     print -r -- "$TEMPORAL_CONFIG"
@@ -13,6 +15,22 @@ _temporalctx_previous_file() {
   local config_file
   config_file="$(_temporalctx_config_file)"
   print -r -- "${config_file:h}/.temporalctx-previous"
+}
+
+_temporalctx_pid_file() {
+  local config_file
+  config_file="$(_temporalctx_config_file)"
+  print -r -- "${config_file:h}/temporal-dev-server.pid"
+}
+
+_temporalctx_overmind_socket() {
+  local config_file
+  config_file="$(_temporalctx_config_file)"
+  print -r -- "${config_file:h}/overmind.sock"
+}
+
+_temporalctx_procfile() {
+  print -r -- "${_TEMPORALCTX_PLUGIN_DIR}/Procfile"
 }
 
 _temporalctx_default_config() {
@@ -213,6 +231,85 @@ _temporalctx_edit_config() {
   ${=editor_cmd} "$config_file"
 }
 
+_temporalctx_start_local_server() {
+  local no_overmind pid_file pid socket procfile
+  no_overmind="${1:-0}"
+
+  if [[ "$no_overmind" != "1" ]] && command -v overmind >/dev/null 2>&1; then
+    socket="$(_temporalctx_overmind_socket)"
+    procfile="$(_temporalctx_procfile)"
+    if [[ ! -f "$procfile" ]]; then
+      print -u2 -- "temporalctx: Procfile not found at $procfile"
+      return 1
+    fi
+    OVERMIND_SOCKET="$socket" overmind start -f "$procfile" -D >/dev/null 2>&1 || return 1
+    print -r -- "started local dev server via overmind"
+    return 0
+  fi
+
+  pid_file="$(_temporalctx_pid_file)"
+
+  if [[ -f "$pid_file" ]]; then
+    pid="$(<"$pid_file")"
+    if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+      print -u2 -- "temporalctx: local dev server already running (pid $pid)"
+      return 1
+    fi
+    rm -f -- "$pid_file"
+  fi
+
+  if [[ -z "$(whence -p temporal)" ]]; then
+    print -u2 -- "temporalctx: temporal CLI not found in PATH"
+    return 127
+  fi
+
+  command temporal server start-dev >/dev/null 2>&1 &
+  pid="$!"
+  print -r -- "$pid" > "$pid_file"
+  print -r -- "started local dev server (pid $pid)"
+}
+
+_temporalctx_stop_local_server() {
+  local no_overmind pid_file pid i socket
+  no_overmind="${1:-0}"
+
+  if [[ "$no_overmind" != "1" ]] && command -v overmind >/dev/null 2>&1; then
+    socket="$(_temporalctx_overmind_socket)"
+    if [[ ! -S "$socket" && ! -e "$socket" ]]; then
+      print -u2 -- "temporalctx: local dev server not running"
+      return 1
+    fi
+    OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1 || return 1
+    print -r -- "stopped local dev server via overmind"
+    return 0
+  fi
+
+  pid_file="$(_temporalctx_pid_file)"
+
+  if [[ ! -f "$pid_file" ]]; then
+    print -u2 -- "temporalctx: local dev server not running"
+    return 1
+  fi
+
+  pid="$(<"$pid_file")"
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" >/dev/null 2>&1; then
+    rm -f -- "$pid_file"
+    print -u2 -- "temporalctx: local dev server not running"
+    return 1
+  fi
+
+  kill "$pid" >/dev/null 2>&1 || true
+  for i in {1..20}; do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.1
+  done
+
+  rm -f -- "$pid_file"
+  print -r -- "stopped local dev server (pid $pid)"
+}
+
 typeset -ga _temporalctx_flags
 
 _temporalctx_build_flags() {
@@ -271,11 +368,30 @@ temporal() {
 }
 
 temporalctx() {
+  local no_overmind=0
   _temporalctx_ensure_config
 
   case "$1" in
     "")
       _temporalctx_pick_context
+      ;;
+    start)
+      if [[ "$2" == "--no-overmind" ]]; then
+        no_overmind=1
+      elif [[ -n "$2" ]]; then
+        print -u2 -- "temporalctx: unknown option for start: $2"
+        return 1
+      fi
+      _temporalctx_start_local_server "$no_overmind"
+      ;;
+    stop)
+      if [[ "$2" == "--no-overmind" ]]; then
+        no_overmind=1
+      elif [[ -n "$2" ]]; then
+        print -u2 -- "temporalctx: unknown option for stop: $2"
+        return 1
+      fi
+      _temporalctx_stop_local_server "$no_overmind"
       ;;
     edit|-e|--edit)
       _temporalctx_edit_config
@@ -311,3 +427,5 @@ temporalctx() {
       ;;
   esac
 }
+
+alias tctx='temporalctx'
