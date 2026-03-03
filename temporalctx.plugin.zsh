@@ -1,11 +1,11 @@
 # temporalctx oh-my-zsh plugin
-# Switch between Temporal contexts defined in ~/.temporal/config.
+# Switch between Temporal contexts defined in ~/.temporal/config.yml.
 
 _temporalctx_config_file() {
   if [[ -n "$TEMPORAL_CONFIG" ]]; then
     print -r -- "$TEMPORAL_CONFIG"
   else
-    print -r -- "$HOME/.temporal/config"
+    print -r -- "$HOME/.temporal/config.yml"
   fi
 }
 
