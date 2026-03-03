@@ -106,6 +106,20 @@ assert_contains "$visual_args" "$cfg" "editor should receive config file path"
 [[ ! -f "$fallback_log" ]] || fail "EDITOR fallback should not run when VISUAL is set"
 log "case passed: edit subcommand"
 
+# Test: help output via subcommand and flag.
+log "case: help output"
+out="$(TEMPORAL_CONFIG="$cfg" zsh -c '
+  source "'$REPO_ROOT'/temporalctx.plugin.zsh"
+  echo "-- help --"
+  temporalctx help
+  echo "-- --help --"
+  temporalctx --help
+')"
+assert_contains "$out" "Usage:" "help output should include usage header"
+assert_contains "$out" "temporalctx <context>" "help output should describe context switching"
+assert_contains "$out" "temporalctx help" "help output should describe help command"
+log "case passed: help output"
+
 # Test: alias + local dev server start/stop via PID file.
 log "case: tctx alias and local dev server lifecycle"
 out="$(PATH="$tmp_root/bin:$PATH" TEMPORAL_CONFIG="$cfg" zsh -c '
