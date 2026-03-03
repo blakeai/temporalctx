@@ -245,6 +245,8 @@ Usage:
   temporalctx edit         open config in $VISUAL/$EDITOR
   temporalctx start        start local dev server
   temporalctx stop         stop local dev server
+  temporalctx status       show local dev server status
+  temporalctx logs         tail local dev server logs
   temporalctx help         show this help
 EOF
 }
@@ -260,7 +262,35 @@ _temporalctx_start_local_server() {
       print -u2 -- "temporalctx: Procfile not found at $procfile"
       return 1
     fi
+    if [[ -e "$socket" ]]; then
+      if OVERMIND_SOCKET="$socket" overmind status 2>/dev/null | grep -q 'running'; then
+        print -u2 -- "temporalctx: local dev server already running"
+        return 1
+      fi
+      OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1
+      rm -f -- "$socket"
+    fi
     OVERMIND_SOCKET="$socket" overmind start -f "$procfile" -D >/dev/null 2>&1 || return 1
+    # Wait for socket to appear, then verify process stays alive
+    local i
+    for i in {1..30}; do
+      if [[ -e "$socket" ]]; then
+        break
+      fi
+      sleep 0.1
+    done
+    if [[ ! -e "$socket" ]]; then
+      print -u2 -- "temporalctx: overmind failed to start"
+      return 1
+    fi
+    # Give the process a moment to crash if it's going to
+    sleep 1
+    if ! OVERMIND_SOCKET="$socket" overmind status 2>/dev/null | grep -q 'running'; then
+      OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1
+      rm -f -- "$socket"
+      print -u2 -- "temporalctx: dev server exited immediately (check that port 7233 is free)"
+      return 1
+    fi
     print -r -- "started local dev server via overmind"
     return 0
   fi
@@ -293,11 +323,18 @@ _temporalctx_stop_local_server() {
 
   if [[ "$no_overmind" != "1" ]] && command -v overmind >/dev/null 2>&1; then
     socket="$(_temporalctx_overmind_socket)"
-    if [[ ! -S "$socket" && ! -e "$socket" ]]; then
+    if [[ ! -e "$socket" ]]; then
+      print -u2 -- "temporalctx: local dev server not running"
+      return 1
+    fi
+    if ! OVERMIND_SOCKET="$socket" overmind status 2>/dev/null | grep -q 'running'; then
+      OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1
+      rm -f -- "$socket"
       print -u2 -- "temporalctx: local dev server not running"
       return 1
     fi
     OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1 || return 1
+    rm -f -- "$socket"
     print -r -- "stopped local dev server via overmind"
     return 0
   fi
@@ -326,6 +363,50 @@ _temporalctx_stop_local_server() {
 
   rm -f -- "$pid_file"
   print -r -- "stopped local dev server (pid $pid)"
+}
+
+_temporalctx_server_status() {
+  local socket pid_file pid
+  socket="$(_temporalctx_overmind_socket)"
+
+  if [[ -e "$socket" ]] && command -v overmind >/dev/null 2>&1; then
+    if OVERMIND_SOCKET="$socket" overmind status 2>/dev/null | grep -q 'running'; then
+      OVERMIND_SOCKET="$socket" overmind status
+      return 0
+    fi
+    OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1
+    rm -f -- "$socket"
+  fi
+
+  pid_file="$(_temporalctx_pid_file)"
+  if [[ -f "$pid_file" ]]; then
+    pid="$(<"$pid_file")"
+    if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+      print -r -- "temporal: running (pid $pid)"
+      return 0
+    fi
+    rm -f -- "$pid_file"
+  fi
+
+  print -u2 -- "temporalctx: local dev server not running"
+  return 1
+}
+
+_temporalctx_server_logs() {
+  local socket
+  socket="$(_temporalctx_overmind_socket)"
+
+  if [[ -e "$socket" ]] && command -v overmind >/dev/null 2>&1; then
+    if OVERMIND_SOCKET="$socket" overmind status 2>/dev/null | grep -q 'running'; then
+      OVERMIND_SOCKET="$socket" overmind echo
+      return $?
+    fi
+    OVERMIND_SOCKET="$socket" overmind quit >/dev/null 2>&1
+    rm -f -- "$socket"
+  fi
+
+  print -u2 -- "temporalctx: local dev server not running (logs require overmind)"
+  return 1
 }
 
 typeset -ga _temporalctx_flags
@@ -424,6 +505,12 @@ temporalctx() {
         return 1
       fi
       _temporalctx_stop_local_server "$no_overmind"
+      ;;
+    status)
+      _temporalctx_server_status
+      ;;
+    logs)
+      _temporalctx_server_logs
       ;;
     edit|-e|--edit)
       _temporalctx_edit_config
