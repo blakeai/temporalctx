@@ -81,6 +81,7 @@ temporalctx staging      # switch to "staging" context
 temporalctx -            # switch to previous context
 temporalctx -c           # print current context
 temporalctx edit         # open config in $EDITOR
+temporalctx help         # show command help
 tctx                     # alias for temporalctx
 ```
 

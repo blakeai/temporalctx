@@ -231,6 +231,20 @@ _temporalctx_edit_config() {
   ${=editor_cmd} "$config_file"
 }
 
+_temporalctx_help() {
+  cat <<'EOF'
+Usage:
+  temporalctx              interactive picker (fzf)
+  temporalctx <context>    switch to context
+  temporalctx -            switch to previous context
+  temporalctx -c           print current context
+  temporalctx edit         open config in $VISUAL/$EDITOR
+  temporalctx start        start local dev server
+  temporalctx stop         stop local dev server
+  temporalctx help         show this help
+EOF
+}
+
 _temporalctx_start_local_server() {
   local no_overmind pid_file pid socket procfile
   no_overmind="${1:-0}"
@@ -374,6 +388,9 @@ temporalctx() {
   case "$1" in
     "")
       _temporalctx_pick_context
+      ;;
+    help|-h|--help)
+      _temporalctx_help
       ;;
     start)
       if [[ "$2" == "--no-overmind" ]]; then
