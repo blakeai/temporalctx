@@ -6,8 +6,18 @@ on:
     branches: [main]
 
 jobs:
-  smoke:
+  shell-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Always pass
-        run: true
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+
+      - name: Run test suite
+        run: |
+          set -euxo pipefail
+          ./tests/run.sh
